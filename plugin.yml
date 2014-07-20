@@ -1,0 +1,20 @@
+name: BeastSoup
+main: com.gmail.mrtangdev.beastsoup.BeastSoup
+version: 2.1
+author: MrTang
+website: http://mrtang.co.nf
+description: Changes how the soup works! Makes it instantly heal yourself, feed yourself etc..
+
+commands:
+    beastsoup:
+        usage: /<command> [options:reload:info]
+        description: Shows you some information about the plugin.
+    soup:
+       usage: /<command>
+       description: Gives you 8 new soup with some nasty effects.
+       permission: beastsoup.soup
+
+permissions:
+    beastsoup.soup:
+        description: Allows you to do /soup
+        default: true
