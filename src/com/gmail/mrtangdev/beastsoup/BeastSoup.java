@@ -1,6 +1,7 @@
 package com.gmail.mrtangdev.beastsoup;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -19,9 +20,12 @@ public class BeastSoup extends JavaPlugin {
 
     public static BeastSoup plugin;
 
+    //List of players that still are still cooling down
+    public List<String> cooldown = new ArrayList<String>();
+    
     //Default configuration
-    private int soupAmount = 8;
     public int soupHealAmount = 7;
+    private int soupAmount = 8;
     private long soupCooldown = 30;
     private boolean customRecipes = true;
     private boolean soupDrawback = true;
@@ -29,59 +33,66 @@ public class BeastSoup extends JavaPlugin {
     @Override
     public void onEnable() {
 	plugin = this;
-	Bukkit.getServer().getPluginManager().registerEvents(new Listeners(this), this); //Register the events
 
-	//Configuration
+	Bukkit.getServer().getPluginManager().registerEvents(new Listeners(), this); //Register the events
+
+	//Load the configuration
 	if (!this.getDataFolder().exists()) {
 	    this.getDataFolder().mkdirs();
 	}
 	getConfig().options().copyDefaults(true);
 	saveConfig();
 
-	soupAmount = getConfig().getInt("soup-amount");
 	soupHealAmount = getConfig().getInt("soup-heal");
+	soupAmount = getConfig().getInt("soup-amount");
 	soupCooldown = getConfig().getLong("soup-cooldown");
 	customRecipes = getConfig().getBoolean("soup-recipes");
 	soupDrawback = getConfig().getBoolean("soup-drawback");
 
 	//Load the recipes
 	if (customRecipes) {
-	    crecipe();
-	    mrecipe();
+	    cactiRecipe();
+	    milkRecipe();
 	}
     }
 
-
     @Override
     public void onDisable() {
+	cooldown.clear();
 	plugin = null;
     }
 
-    ArrayList<String> cooldown = new ArrayList<String>();
-
     //Different commands
+    @Override
     public boolean onCommand(CommandSender sender, Command cmd, String commandlabel, String[] args) {
 	if (cmd.getName().equalsIgnoreCase("BeastSoup")) { 
 	    if (args.length == 0) {
-		sender.sendMessage(ChatColor.BLUE + "BeastSoup" + ChatColor.GRAY + " made by " + ChatColor.GOLD + "MrTang/Appelsinol");
-		sender.sendMessage(ChatColor.DARK_PURPLE + "Use Mushroom soup to instantly heal up some hearts! Heal hunger when you are at full health.");
-		sender.sendMessage(ChatColor.ITALIC + "Use /soup to get 8 more soup.");
-		sender.sendMessage(ChatColor.GRAY + "For more info use ¡ìf/beastsoup info");
+		String[] helpMsg = new String[] {
+			ChatColor.BLUE + "BeastSoup" + ChatColor.GRAY + " made by " + ChatColor.GOLD + "MrTang | appelsinol",
+			ChatColor.DARK_PURPLE + "Use Mushroom soup to instantly heal up some hearts! Heal hunger when you are at full health.",
+			ChatColor.GRAY.toString() + ChatColor.ITALIC + "Use /soup to get more soup.",
+			ChatColor.GRAY + "For more info use " + ChatColor.WHITE + "/beastsoup info"
+		};
+		sender.sendMessage(helpMsg);
 		return true;
+
 	    } else if (args.length == 1) {
 		//Shows the current configuration file
 		if (args[0].equalsIgnoreCase("options")) {
-		    sender.sendMessage(ChatColor.RED + "Current options/configuration:" + ChatColor.GRAY + " (editable in config.yml for operators)");
-		    sender.sendMessage(ChatColor.DARK_GRAY + "Soup amount from command: " + "¡ì9" + soupAmount);
-		    sender.sendMessage(ChatColor.DARK_GRAY + "Amount of health from soup: " + "¡ì9" + soupHealAmount);
-		    sender.sendMessage(ChatColor.DARK_GRAY + "Soup cooldown on command: " + "¡ì9" + soupCooldown);
-		    sender.sendMessage(ChatColor.DARK_GRAY + "Custom soup recipes status: " + "¡ì9" + customRecipes);
-		    sender.sendMessage(ChatColor.DARK_GRAY + "Drawbacks + waitingtime when /soup: " + "¡ì9" + soupDrawback);
+		    String[] optionMsg = new String[] {
+			    ChatColor.RED + "Current options/configuration:" + ChatColor.GRAY + " (editable in config.yml for operators)",
+			    ChatColor.DARK_GRAY + "Amount of health from soup: " + ChatColor.BLUE + soupHealAmount,
+			    ChatColor.DARK_GRAY + "Soup amount from command: " + ChatColor.BLUE + soupAmount,
+			    ChatColor.DARK_GRAY + "Soup cooldown on command: " + ChatColor.BLUE + soupCooldown,
+			    ChatColor.DARK_GRAY + "Custom soup recipes status: " + ChatColor.BLUE + customRecipes,
+			    ChatColor.DARK_GRAY + "Drawbacks + waitingtime when /soup: " + ChatColor.BLUE + soupDrawback
+		    };
+		    sender.sendMessage(optionMsg);
 		    return true;
+
 		    //Reloads the configuration file
 		} else if (args[0].equalsIgnoreCase("reload")) {
 		    if (sender.isOp()) {
-			sender.sendMessage(ChatColor.DARK_PURPLE + "BeastSoup " + ChatColor.GRAY + "has been reloaded.");
 			reloadConfig();
 			saveConfig();
 			soupAmount = getConfig().getInt("soup-amount");
@@ -89,43 +100,53 @@ public class BeastSoup extends JavaPlugin {
 			soupCooldown = getConfig().getLong("soup-cooldown");
 			customRecipes = getConfig().getBoolean("soup-recipes");
 			soupDrawback = getConfig().getBoolean("soup-drawback");
+			sender.sendMessage(ChatColor.DARK_PURPLE + "BeastSoup " + ChatColor.GRAY + "has been reloaded.");
 			return true;
 		    } else {
 			sender.sendMessage(ChatColor.RED + "You don't have permission to do that (Operators only).");
-			return false;
+			return true;
 		    }
+
 		    //Shows some info
 		} else if (args[0].equalsIgnoreCase("info")) {
-		    sender.sendMessage(ChatColor.DARK_GREEN + "Recipes are shapeless.");
-		    sender.sendMessage(ChatColor.GREEN + "Cocoa milk recipe: " + ChatColor.GRAY + "1 cocoa bean, a bowl");
-		    sender.sendMessage(ChatColor.GREEN + "Cacti juice recipe: " + ChatColor.GRAY + "2 cacti, a bowl");
-		    sender.sendMessage(ChatColor.DARK_GRAY + "/beastsoup options will give you the configured info of the plugin");
+		    String[] infoMsg = new String[] {
+			    ChatColor.DARK_GREEN + "Recipes are shapeless.",
+			    ChatColor.GREEN + "Cocoa milk recipe: " + ChatColor.GRAY + "1 cocoa bean, a bowl",
+			    ChatColor.GREEN + "Cacti juice recipe: " + ChatColor.GRAY + "2 cacti, a bowl",
+			    ChatColor.DARK_GRAY + "/beastsoup options will give you the configured info of the plugin"
+		    };
+		    sender.sendMessage(infoMsg);
 		    return true;
 		} else {
 		    sender.sendMessage(ChatColor.RED + "Argument not valid - " + args[0]);
 		    return false;
 		}
 	    }
-	    return true;
+	    return false;
 	}
 
 	if (!(sender instanceof Player)) {
 	    sender.sendMessage(ChatColor.DARK_RED + "Only players can use this command.");
 	    return true;
 	}
+
 	//More Soup command
 	if (cmd.getName().equalsIgnoreCase("soup")) {
 	    final Player p = (Player) sender;
+
 	    if (p.hasPermission("beastsoup.soup")) {
 		if (cooldown.contains(p.getName())) {
 		    p.sendMessage(ChatColor.RED + "You must wait before using the /soup command again.");
 		    return true;
 		}
+
+		//Checking if you get drawbacks
 		if (soupDrawback) {
 		    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 100, 2));
 		    p.addPotionEffect(new PotionEffect(PotionEffectType.WEAKNESS, 100, 2));
 		    p.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 100, 2));
 		    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_DIGGING, 100, 3));
+
 		    //Cooldown time for /soup command
 		    cooldown.add(p.getName());
 		    Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
@@ -138,14 +159,17 @@ public class BeastSoup extends JavaPlugin {
 			    p.sendMessage(ChatColor.DARK_PURPLE + "You have been given " + soupAmount + " soup!");
 			}
 		    }, 100L);
+
 		} else {
 		    for (int i = 0; i < soupAmount; i++) {
 			p.getInventory().addItem(new ItemStack(Material.MUSHROOM_SOUP, 1));
 		    }
 		    p.sendMessage(ChatColor.DARK_PURPLE + "You have been given " + soupAmount + " soup!");
 		}
-		//Removes player from cooldown list
+
+		//Using scheduler so he can get a message when it's over :(
 		Bukkit.getServer().getScheduler().scheduleSyncDelayedTask(this, new Runnable() {
+		    //Removes player from cooldown list
 		    @Override
 		    public void run() {
 			if (cooldown.contains(p.getName())) {
@@ -157,14 +181,14 @@ public class BeastSoup extends JavaPlugin {
 		return true;
 	    } else {
 		p.sendMessage(ChatColor.RED + "You don't have permission to do that.");
-		return false;
+		return true;
 	    }
 	}
-	return true;
+	return false;
     }
 
     //Cacti Juice Recipe
-    private void crecipe() {
+    private void cactiRecipe() {
 	ItemStack cjuice = new ItemStack(Material.MUSHROOM_SOUP, 1);
 	ItemMeta meta = cjuice.getItemMeta();
 	meta.setDisplayName("Cacti Juice");
@@ -178,7 +202,7 @@ public class BeastSoup extends JavaPlugin {
 
     //Cocoa Milk Recipe
     @SuppressWarnings("deprecation")
-    private void mrecipe() {
+    private void milkRecipe() {
 	ItemStack cmilk = new ItemStack(Material.MUSHROOM_SOUP, 1);
 	ItemMeta meta = cmilk.getItemMeta();
 	meta.setDisplayName("Cocoa Milk");

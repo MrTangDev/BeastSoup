@@ -1,7 +1,7 @@
 name: BeastSoup
 main: com.gmail.mrtangdev.beastsoup.BeastSoup
-version: 2.1
-author: MrTang
+version: 2.2
+author: MrTang | appelsinol
 website: http://mrtang.co.nf
 description: Changes how the soup works! Makes it instantly heal yourself, feed yourself etc..
 
@@ -18,3 +18,6 @@ permissions:
     beastsoup.soup:
         description: Allows you to do /soup
         default: true
+    beastsoup.sign:
+        description: Allows you to make soup signs
+        default: false
